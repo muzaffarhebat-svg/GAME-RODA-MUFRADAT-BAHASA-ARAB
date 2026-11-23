@@ -729,7 +729,12 @@ function speakArabic(t,t2){
 function speakWord(w){speakArabic(w.ar);}
 /* ===== BUNYI & PUJIAN ===== */
 var AC=null,SFX_ON=true;
-function ac(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();}catch(e){AC=null;}return AC;}
+function ac(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state!=="running"){var rp=AC.resume();if(rp&&rp.catch)rp.catch(function(){});}}catch(e){AC=null;}return AC;}
+/* iOS/Safari: konteks audio boleh 'interrupted' atau 'suspended'; bangunkan semula pada setiap sentuhan/klik pemain */
+["pointerdown","touchend","click"].forEach(function(ev){document.addEventListener(ev,function(){ac();},true);});
+document.addEventListener("visibilitychange",function(){if(!document.hidden)ac();});
+/* iOS: benarkan bunyi permainan walaupun suis senyap (ringer) dihidupkan */
+try{if(navigator.audioSession)navigator.audioSession.type="playback";}catch(e){}
 function tone(f,t0,d,type,vol,f2){
  var a=ac();if(!a||!SFX_ON)return;
  try{var o=a.createOscillator(),g=a.createGain(),T=a.currentTime+t0;
