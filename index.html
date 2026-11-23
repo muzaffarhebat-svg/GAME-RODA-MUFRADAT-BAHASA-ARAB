@@ -23,7 +23,7 @@ input:focus{outline:none;border-color:var(--bg)}
 .btn.alt{background:#fff;box-shadow:0 5px 0 #bdb3f0}
 #spinBtn:disabled+#learnWheelBtn{opacity:.5;cursor:not-allowed}
 .err{color:var(--no);font-weight:700;min-height:1.3em;margin:6px 0 0}
-#bar{display:none;width:100%;justify-content:space-between;color:#fff;font-weight:700;padding:4px 4px 10px;gap:8px}
+#bar{display:none;width:100%;justify-content:space-between;align-items:center;flex-wrap:wrap;color:#fff;font-weight:700;padding:4px 4px 10px;gap:8px}
 #bar span{background:rgba(255,255,255,.3);border-radius:12px;padding:6px 12px}
 #wheelWrap{position:relative;width:min(88vw,340px);aspect-ratio:1}
 #wheel{width:100%;height:100%;display:block;border-radius:50%;box-shadow:0 0 0 8px var(--sun),0 10px 24px rgba(0,0,0,.35)}
@@ -134,6 +134,10 @@ input:focus{border-color:#0b8a69;box-shadow:inset 0 3px 6px rgba(0,60,60,.12),0 
 
 /* bar status */
 #bar span{background:linear-gradient(#12a07c,#0b7a5e);color:#fff;border:2px solid #ffe08a;border-radius:14px;font-size:1.05rem;font-weight:800;box-shadow:0 3px 0 #06604a;text-shadow:0 1px 1px rgba(0,0,0,.35)}
+/* butang HOME / Menu Utama (dalam bar permainan) */
+#menuBtn{font-family:inherit;background:linear-gradient(#bf94ff,#8c52f0 50%,#6a35c8);color:#fff;border:2px solid #e2d0ff;border-radius:14px;font-size:1rem;font-weight:800;padding:6px 12px;box-shadow:0 3px 0 #45229a;text-shadow:0 1px 1px rgba(40,0,90,.5);cursor:pointer;white-space:nowrap}
+#menuBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #45229a}
+#menuBtn:focus-visible{outline:4px solid #0b5fd6;outline-offset:2px}
 
 /* roda */
 #wheel{box-shadow:0 0 0 7px #ffd23f,0 0 0 12px #0b8a69,0 14px 26px rgba(0,40,60,.45)}
@@ -330,20 +334,9 @@ input{border-color:#8fc2f5}input:focus{border-color:#2a6fd0;box-shadow:inset 0 3
 <div id="app">
  <div id="bad"></div>
  <p id="audioMsg" class="sub" role="status"></p>
- <div id="bar"><span id="bName"></span><span id="bScore">⭐ 0 markah</span><span id="bProg">0/10</span></div>
+ <div id="bar"><span id="bName"></span><span id="bScore">⭐ 0 markah</span><span id="bProg">0/10</span><button id="menuBtn" type="button" aria-label="Kembali ke Menu Utama">🏠 Menu Utama</button></div>
 
- <section id="s-gate" class="screen on">
-  <h1>Roda Mufradat Arab</h1>
-  <p class="sub">Masukkan kod akses untuk bermain.</p>
-  <div class="panel">
-   <label for="ak" style="font-weight:700">Kod akses</label><br><br>
-   <input id="ak" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="•••••">
-   <p class="err" id="akErr"></p>
-   <button class="btn" id="akBtn" type="button">Masuk</button>
-  </div>
- </section>
-
- <section id="s-start" class="screen">
+ <section id="s-start" class="screen on">
   <h1>Roda Mufradat Arab</h1>
   <p class="sub">Pusing roda, lihat perkataan, pilih gambar yang betul!</p>
   <div class="panel">
@@ -481,7 +474,7 @@ function detectEmoji(){
 }
 function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
 function showScreen(id){
- ["s-gate","s-start","s-wheel","s-q","s-res","s-learn","s-topic","s-cert","s-flip","s-match"].forEach(function(s){$(s).classList.toggle("on",s===id);});
+ ["s-start","s-wheel","s-q","s-res","s-learn","s-topic","s-cert","s-flip","s-match"].forEach(function(s){$(s).classList.toggle("on",s===id);});
  $("bar").style.display=(id==="s-wheel"||id==="s-q"||id==="s-flip"||id==="s-match")?"flex":"none";
  window.scrollTo(0,0);
  try{avScreen(id);}catch(e){}
@@ -507,11 +500,21 @@ function updateBar(){
  $("bName").textContent=S.name;$("bScore").textContent="⭐ "+S.score+" markah";
  $("bProg").textContent=Math.min(S.n+1,ROUND_LEN)+"/"+ROUND_LEN;
 }
-function startGame(name){if(!UNLOCKED)return;S.name=name;loadMastered();resetGame();try{avSay("Jom mula, "+name+"!",2400);}catch(e){}}
+function startGame(name){S.name=name;loadMastered();resetGame();try{avSay("Jom mula, "+name+"!",2400);}catch(e){}}
 function resetGame(){
  S.score=0;S.n=0;S.wrong=[];S.cur=null;S.answered=true;S.spinning=false;
  S.seen={};try{avReset();}catch(e){}musicStart();
  updateBar();prepareWheel();showScreen("s-wheel");
+}
+/* HOME: batalkan proses tertangguh (pusingan roda / tamat pusingan) supaya tidak kembali ke permainan */
+var homeGen=0;
+function goHome(){
+ homeGen++;S.spinning=false;
+ try{musicStop();}catch(e){}
+ try{if(AUDIO)speechSynthesis.cancel();}catch(e){}
+ try{stopRec();}catch(e){}
+ $("audioMsg").textContent="";
+ showScreen("s-start");
 }
 function pool(){return WORDS.filter(function(w){return !S.seen[w.id];});}
 
@@ -564,8 +567,10 @@ function spinWheel(){
  if(S.spinning||!S.answered||!pool().length)return;
  S.spinning=true;$("spinBtn").disabled=true;$("spinMsg").textContent="Berpusing...";
  var plan=planSpin(),seg=plan.seg,start=S.rot,end=plan.end,dur=4200,t0=null,span=360/S.segs.length,lastI=Math.floor(start/span),lastT=0;
+ var gen=homeGen;
  sfx("spin");try{avSpinning();}catch(e){}
  function step(ts){
+  if(gen!==homeGen)return;   /* HOME ditekan: hentikan pusingan */
   if(t0===null)t0=ts;
   var p=Math.min((ts-t0)/dur,1),e=1-Math.pow(1-p,3);
   S.rot=start+(end-start)*e;
@@ -580,12 +585,13 @@ function pickWord(cat){
  return c[Math.floor(Math.random()*c.length)];
 }
 function onSpinEnd(seg){
+ var gen=homeGen;
  S.spinning=false;sfx("ting");try{avSpinEnd(seg.cat);}catch(e){}
  if(MODE[seg.cat]&&pool().filter(function(x){return x.cat===seg.cat;}).length>=2){
-  $("spinMsg").textContent="Tema: "+CATS[seg.cat].ms+(MODE[seg.cat]==="flip"?" 🃏":" 🔗");setTimeout(function(){(MODE[seg.cat]==="flip"?startFlip:startMatch)(seg.cat);},900);return;}
+  $("spinMsg").textContent="Tema: "+CATS[seg.cat].ms+(MODE[seg.cat]==="flip"?" 🃏":" 🔗");setTimeout(function(){if(gen===homeGen)(MODE[seg.cat]==="flip"?startFlip:startMatch)(seg.cat);},900);return;}
  var w=pickWord(seg.cat);S.seen[w.id]=true;S.cur=w;
  $("spinMsg").textContent="Tema: "+CATS[seg.cat].ms;
- setTimeout(function(){renderQuestion(w);},900);
+ setTimeout(function(){if(gen===homeGen)renderQuestion(w);},900);
 }
 function clash(a,b){return CONFLICTS.some(function(p){return (p[0]===a.ms&&p[1]===b.ms)||(p[1]===a.ms&&p[0]===b.ms);});}
 function buildOptions(w){
@@ -780,7 +786,7 @@ function duck(ms){   /* perlahkan muzik sebentar supaya sebutan Mumtaz jelas */
 function inGame(){return["s-wheel","s-q","s-flip","s-match"].some(function(id){return $(id).classList.contains("on");});}
 /* ===== MINI GAME KAD PUSING ===== */
 function startFlip(cat){
- var ws=shuffle(pool().filter(function(w){return w.cat===cat;})).slice(0,4),cs=[];
+ var ws=shuffle(pool().filter(function(w){return w.cat===cat;})).slice(0,2),cs=[];   /* 2 pasangan = 4 kad (2 perkataan + 2 gambar) */
  ws.forEach(function(w){S.seen[w.id]=true;cs.push({w:w,k:"a"},{w:w,k:"p"});});
  S.answered=false;S.flip={cards:shuffle(cs),open:[],lock:false,left:ws.length,tot:ws.length,mis:{},perfect:0};
  var h=$("fCat");h.textContent=CATS[cat].ms;h.style.background=CATS[cat].c;
@@ -869,7 +875,6 @@ function showCert(){
 }
 /* ===== BELAJAR ===== */
 function renderLearn(){
- if(!UNLOCKED)return;
  var b=$("topics");b.innerHTML="";
  Object.keys(CATS).forEach(function(k){
   var n=WORDS.filter(function(w){return w.cat===k;}).length,e=document.createElement("button");
@@ -1002,6 +1007,7 @@ $("flipNext").addEventListener("click",nextRound);
 $("matchNext").addEventListener("click",nextRound);
 $("againBtn").addEventListener("click",resetGame);
 $("homeBtn").addEventListener("click",function(){S.seen={};showScreen("s-start");});
+$("menuBtn").addEventListener("click",goHome);
 if(!AUDIO)$("sayBtn").style.display="none";
 else{loadVoices();try{speechSynthesis.addEventListener("voiceschanged",loadVoices);}catch(e){}$("sayBtn").addEventListener("click",function(){speakWord(S.cur);});}
 $("learnBtn").addEventListener("click",renderLearn);
@@ -1013,24 +1019,9 @@ $("certBtn").addEventListener("click",showCert);
 $("certBack").addEventListener("click",function(){showScreen("s-res");});
 $("printBtn").addEventListener("click",function(){window.print();});
 
-/* ===== KOD AKSES ===== */
-/* Nota: ini hanya halangan ringan. Kod disimpan sebagai cincangan, tetapi sesiapa yang boleh membuka fail ini masih boleh mengubah atau menyalinnya. */
-var ACCESS_HASH=4120073850198890,UNLOCKED=false;
-function h53(str){var h1=0xdeadbeef,h2=0x41c6ce57;for(var i=0,ch;i<str.length;i++){ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677);}
- h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return 4294967296*(2097151&h2)+(h1>>>0);}
-function tryUnlock(){
- var c=$("ak").value.trim();
- if(h53("mufradat:"+c)===ACCESS_HASH){
-  UNLOCKED=true;$("akErr").textContent="";$("ak").value="";
-  try{localStorage.setItem("mufradat-akses",String(ACCESS_HASH));}catch(e){}
-  showScreen("s-start");
- }else{$("akErr").textContent="Kod tidak betul. Cuba lagi.";$("ak").value="";$("ak").focus();}
-}
-$("akBtn").addEventListener("click",tryUnlock);
-$("ak").addEventListener("keydown",function(e){if(e.key==="Enter")tryUnlock();});
-try{if(localStorage.getItem("mufradat-akses")===String(ACCESS_HASH)){UNLOCKED=true;showScreen("s-start");}}catch(e){}
 emojiOK=detectEmoji();
 if(validateWords()){}else{$("goBtn").disabled=true;}
+showScreen("s-start");
 </script>
 </body>
 </html>
